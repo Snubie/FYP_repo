@@ -1,7 +1,8 @@
 # Import necessary modules
 import tensorflow as tf
-from keras.models import Model, load_model
-from keras.layers import Input, Conv2D, MaxPooling2D, UpSampling2D, Lambda
+from tensorflow import keras
+
+from keras import Model
 from keras.preprocessing.image import ImageDataGenerator
 from keras.utils import image_dataset_from_directory
 
@@ -14,31 +15,31 @@ import random
 
 def cnn_model():
 
-    input_layer = Input(shape=(600, 400, 3))
-    
-    x = Conv2D(filters=16, kernel_size=(3,3), padding='same', activation='relu')(input_layer)
-    x = MaxPooling2D(pool_size=(2,2))(x)
+    inputs = keras.layers.Input(shape=(600, 400, 3))
 
-    x = Conv2D(filters=8, kernel_size=(3,3), padding='same', activation='relu')(x)
-    x = MaxPooling2D(pool_size=(2,2))(x)
+    conv1 = keras.layers.Conv2D(filters=16, kernel_size=(3,3), padding='same', activation='relu')(inputs)
+    pool1 = keras.layers.MaxPooling2D(pool_size=(2,2))(conv1)
 
-    x = Conv2D(filters=8, kernel_size=(3,3), padding='same', activation='relu')(x)
-    x = MaxPooling2D(pool_size=(2,2))(x)
+    conv2 = keras.layers.Conv2D(filters=32, kernel_size=(3,3), padding='same', activation='relu')(pool1)
+    pool2 = keras.layers.MaxPooling2D(pool_size=(2,2))(conv2)
 
-    x = Conv2D(filters=8, kernel_size=(3,3), padding='same', activation='relu')(x)
+    conv3 = keras.layers.Conv2D(filters=64, kernel_size=(3,3), padding='same', activation='relu')(pool2)
+    pool3 = keras.layers.MaxPooling2D(pool_size=(2,2))(conv3)
 
-    x = UpSampling2D(size=(2, 2))(x)
-    x = Conv2D(filters=8, kernel_size=(3,3), padding='same', activation='relu')(x)
+    conv4 = keras.layers.Conv2D(filters=128, kernel_size=(3,3), padding='same', activation='relu')(pool3)
 
-    x = UpSampling2D(size=(2, 2))(x)
-    x = Conv2D(filters=8, kernel_size=(3,3), padding='same', activation='relu')(x)
+    up1 = keras.layers.Conv2D(filters=64, kernel_size=(2,2), activation = 'relu', padding = 'same')(keras.layers.UpSampling2D()(conv4))
+    merge1 = keras.layers.concatenate([conv3, up1], axis = 3)
 
-    x = UpSampling2D(size=(2, 2))(x)
-    x = Conv2D(filters=16, kernel_size=(3,3), padding='same', activation='relu')(x)
+    up2 = keras.layers.Conv2D(filters=64, kernel_size=(2,2), activation = 'relu', padding = 'same')(keras.layers.UpSampling2D()(merge1))
+    merge2 = keras.layers.concatenate([conv2, up2], axis = 3)
 
-    output_layer = Conv2D(filters=3, kernel_size=(3,3), padding='same', activation='relu')(x)
+    up3 = keras.layers.Conv2D(filters=64, kernel_size=(2,2), activation = 'relu', padding = 'same')(keras.layers.UpSampling2D()(merge2))
+    merge3 = keras.layers.concatenate([conv1, up3], axis = 3)
 
-    model = Model(inputs=input_layer, outputs=output_layer)
+    outputs = keras.layers.Conv2D(filters=3, kernel_size=(3,3), padding='same', activation='relu')(merge3)
+
+    model = Model(inputs=inputs, outputs=outputs)
     return model
 
 def train(config):
@@ -82,18 +83,19 @@ def train(config):
 
     #Compile the model
     model = cnn_model()
-    model.compile(optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3),
-        loss=tf.keras.losses.MeanSquaredError(), 
-        metrics = ["accuracy"])
+    print(model.summary())
+    # model.compile(optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3),
+    #     loss=tf.keras.losses.MeanSquaredError(), 
+    #     metrics = ["accuracy"])
 
-    generator = zip(train_generator, test_generator)
+    # generator = zip(train_generator, test_generator)
 
-    model.fit(
-        generator,
-        steps_per_epoch = (train_df.size / config.train_batch_size),
-        epochs = config.epochs,
-        batch_size= config.train_batch_size
-    )
+    # model.fit(
+    #     generator,
+    #     steps_per_epoch = (train_df.size / config.train_batch_size),
+    #     epochs = config.epochs,
+    #     batch_size= config.train_batch_size
+    # )
 
     # for e in range(model.epochs):
     # print('Epoch: ', e)
