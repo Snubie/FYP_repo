@@ -1,10 +1,9 @@
 # Import necessary modules
 import tensorflow as tf
-from tensorflow import keras
 
-from keras import Model
+from keras.layers import Input, Conv2D, MaxPooling2D, UpSampling2D, concatenate
+from keras.models import Model, load_model
 from keras.preprocessing.image import ImageDataGenerator
-from keras.utils import image_dataset_from_directory
 
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -15,29 +14,29 @@ import random
 
 def cnn_model():
 
-    inputs = keras.layers.Input(shape=(600, 400, 3))
+    inputs = Input(shape=(600, 400, 3))
 
-    conv1 = keras.layers.Conv2D(filters=16, kernel_size=(3,3), padding='same', activation='relu')(inputs)
-    pool1 = keras.layers.MaxPooling2D(pool_size=(2,2))(conv1)
+    conv1 = Conv2D(filters=8, kernel_size=(3,3), padding='same', activation='relu')(inputs)
+    pool1 = MaxPooling2D(pool_size=(2,2))(conv1)
 
-    conv2 = keras.layers.Conv2D(filters=32, kernel_size=(3,3), padding='same', activation='relu')(pool1)
-    pool2 = keras.layers.MaxPooling2D(pool_size=(2,2))(conv2)
+    conv2 = Conv2D(filters=16, kernel_size=(3,3), padding='same', activation='relu')(pool1)
+    pool2 = MaxPooling2D(pool_size=(2,2))(conv2)
 
-    conv3 = keras.layers.Conv2D(filters=64, kernel_size=(3,3), padding='same', activation='relu')(pool2)
-    pool3 = keras.layers.MaxPooling2D(pool_size=(2,2))(conv3)
+    conv3 = Conv2D(filters=32, kernel_size=(3,3), padding='same', activation='relu')(pool2)
+    pool3 = MaxPooling2D(pool_size=(2,2))(conv3)
 
-    conv4 = keras.layers.Conv2D(filters=128, kernel_size=(3,3), padding='same', activation='relu')(pool3)
+    conv4 = Conv2D(filters=64, kernel_size=(3,3), padding='same', activation='relu')(pool3)
 
-    up1 = keras.layers.Conv2D(filters=64, kernel_size=(2,2), activation = 'relu', padding = 'same')(keras.layers.UpSampling2D()(conv4))
-    merge1 = keras.layers.concatenate([conv3, up1], axis = 3)
+    up1 = Conv2D(filters=32, kernel_size=(2,2), activation = 'relu', padding = 'same')(UpSampling2D()(conv4))
+    merge1 = concatenate([conv3, up1], axis = 3)
 
-    up2 = keras.layers.Conv2D(filters=64, kernel_size=(2,2), activation = 'relu', padding = 'same')(keras.layers.UpSampling2D()(merge1))
-    merge2 = keras.layers.concatenate([conv2, up2], axis = 3)
+    up2 = Conv2D(filters=16, kernel_size=(2,2), activation = 'relu', padding = 'same')(UpSampling2D()(merge1))
+    merge2 = concatenate([conv2, up2], axis = 3)
 
-    up3 = keras.layers.Conv2D(filters=64, kernel_size=(2,2), activation = 'relu', padding = 'same')(keras.layers.UpSampling2D()(merge2))
-    merge3 = keras.layers.concatenate([conv1, up3], axis = 3)
+    up3 = Conv2D(filters=8, kernel_size=(2,2), activation = 'relu', padding = 'same')(UpSampling2D()(merge2))
+    merge3 = concatenate([conv1, up3], axis = 3)
 
-    outputs = keras.layers.Conv2D(filters=3, kernel_size=(3,3), padding='same', activation='relu')(merge3)
+    outputs = Conv2D(filters=3, kernel_size=(3,3), padding='same', activation='relu')(merge3)
 
     model = Model(inputs=inputs, outputs=outputs)
     return model
@@ -83,19 +82,19 @@ def train(config):
 
     #Compile the model
     model = cnn_model()
-    print(model.summary())
-    # model.compile(optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3),
-    #     loss=tf.keras.losses.MeanSquaredError(), 
-    #     metrics = ["accuracy"])
+    # print(model.summary())
+    model.compile(optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3),
+        loss=tf.keras.losses.MeanSquaredError(), 
+        metrics = ["accuracy"])
 
-    # generator = zip(train_generator, test_generator)
+    generator = zip(train_generator, test_generator)
 
-    # model.fit(
-    #     generator,
-    #     steps_per_epoch = (train_df.size / config.train_batch_size),
-    #     epochs = config.epochs,
-    #     batch_size= config.train_batch_size
-    # )
+    model.fit(
+        generator,
+        steps_per_epoch = (train_df.size / config.train_batch_size),
+        epochs = config.epochs,
+        batch_size= config.train_batch_size
+    )
 
     # for e in range(model.epochs):
     # print('Epoch: ', e)
