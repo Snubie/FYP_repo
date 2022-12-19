@@ -16,24 +16,24 @@ def cnn_model():
 
     inputs = Input(shape=(600, 400, 3))
 
-    conv1 = Conv2D(filters=8, kernel_size=(3,3), padding='same', activation='relu')(inputs)
+    conv1 = Conv2D(filters=16, kernel_size=(3,3), padding='same', activation='relu')(inputs)
     pool1 = MaxPooling2D(pool_size=(2,2))(conv1)
 
-    conv2 = Conv2D(filters=16, kernel_size=(3,3), padding='same', activation='relu')(pool1)
+    conv2 = Conv2D(filters=32, kernel_size=(3,3), padding='same', activation='relu')(pool1)
     pool2 = MaxPooling2D(pool_size=(2,2))(conv2)
 
-    conv3 = Conv2D(filters=32, kernel_size=(3,3), padding='same', activation='relu')(pool2)
+    conv3 = Conv2D(filters=64, kernel_size=(3,3), padding='same', activation='relu')(pool2)
     pool3 = MaxPooling2D(pool_size=(2,2))(conv3)
 
-    conv4 = Conv2D(filters=64, kernel_size=(3,3), padding='same', activation='relu')(pool3)
+    conv4 = Conv2D(filters=128, kernel_size=(3,3), padding='same', activation='relu')(pool3)
 
-    up1 = Conv2D(filters=32, kernel_size=(2,2), activation = 'relu', padding = 'same')(UpSampling2D()(conv4))
+    up1 = Conv2D(filters=64, kernel_size=(2,2), activation = 'relu', padding = 'same')(UpSampling2D()(conv4))
     merge1 = concatenate([conv3, up1], axis = 3)
 
-    up2 = Conv2D(filters=16, kernel_size=(2,2), activation = 'relu', padding = 'same')(UpSampling2D()(merge1))
+    up2 = Conv2D(filters=32, kernel_size=(2,2), activation = 'relu', padding = 'same')(UpSampling2D()(merge1))
     merge2 = concatenate([conv2, up2], axis = 3)
 
-    up3 = Conv2D(filters=8, kernel_size=(2,2), activation = 'relu', padding = 'same')(UpSampling2D()(merge2))
+    up3 = Conv2D(filters=16, kernel_size=(2,2), activation = 'relu', padding = 'same')(UpSampling2D()(merge2))
     merge3 = concatenate([conv1, up3], axis = 3)
 
     outputs = Conv2D(filters=3, kernel_size=(3,3), padding='same', activation='relu')(merge3)
@@ -44,8 +44,8 @@ def cnn_model():
 def train(config):
 
     # training dataset 
-    train_df = pd.DataFrame({'lowlight': glob.glob(config.lowlight_train_images_path)})
-    test_df = pd.DataFrame({ 'normal': glob.glob(config.result_train_images_path)})
+    train_df = pd.DataFrame({ "lowlight" : glob.glob(config.lowlight_train_images_path)})
+    test_df = pd.DataFrame({ "normal" : glob.glob(config.result_train_images_path)})
 
     data_gen_args = dict(
         rescale= 1./255,  # Normalize pixel values
@@ -55,7 +55,7 @@ def train(config):
         shear_range=0.2,
         zoom_range=0.2,
         horizontal_flip=True,
-        fill_mode='nearest'
+        fill_mode= "nearest"
     )
 
     train_datagen = ImageDataGenerator(**data_gen_args)
@@ -64,7 +64,7 @@ def train(config):
     seed = random.randint(1, 1000000)
     train_generator = train_datagen.flow_from_dataframe(
         train_df,
-        x_col = 'lowlight',
+        x_col = "lowlight",
         target_size = (600, 400),  # Resize images to a fixed size
         batch_size = config.train_batch_size,
         class_mode = None,
@@ -73,7 +73,7 @@ def train(config):
 
     test_generator = test_datagen.flow_from_dataframe(
         test_df,
-        x_col='normal',
+        x_col="normal",
         target_size=(600, 400),  # Resize images to a fixed size
         batch_size=config.train_batch_size,
         class_mode = None,
@@ -123,7 +123,7 @@ def test(config):
 
     train_generator = train_datagen.flow_from_dataframe(
         low_df,
-        x_col = 'low',
+        x_col = "low",
         target_size = (600, 400),  # Resize images to a fixed size
         batch_size = config.train_batch_size,
         class_mode = None,
@@ -132,7 +132,7 @@ def test(config):
 
     test_generator = test_datagen.flow_from_dataframe(
         normal_df,
-        x_col='normal',
+        x_col="normal",
         target_size=(600, 400),  # Resize images to a fixed size
         batch_size=config.train_batch_size,
         class_mode = None,
@@ -145,12 +145,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     # Input Parameters
-    parser.add_argument('--lowlight_train_images_path', type=str, default=".\\LOL\\Real_captured\\Train\\Low\\*.png")
-    parser.add_argument('--result_train_images_path', type=str, default=".\\LOL\\Real_captured\\Train\\Normal\\*.png")
-    parser.add_argument('--lowlight_test_images_path', type=str, default=".\\LOL\\Real_captured\\Test\\Low\\*.png")
-    parser.add_argument('--result_test_images_path', type=str, default=".\\LOL\\Real_captured\\Test\\Normal\\*.png")
+    parser.add_argument('--lowlight_train_images_path', type=str, default="./LOL/Real_captured/Train/Low/*.png")
+    parser.add_argument('--result_train_images_path', type=str, default="./LOL/Real_captured/Train/Normal/*.png")
+    parser.add_argument('--lowlight_test_images_path', type=str, default="./LOL/Real_captured/Test/Low/*.png")
+    parser.add_argument('--result_test_images_path', type=str, default="./LOL/Real_captured/Test/Normal/*.png")
 
-    parser.add_argument('--model_loc', type=str, default=".\\Model\\")
+    parser.add_argument('--model_loc', type=str, default="./Model/")
 
     parser.add_argument('--epochs', type=int, default=50)
     parser.add_argument('--train_batch_size', type=int, default=32)
