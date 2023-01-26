@@ -4,39 +4,87 @@ import tensorflow as tf
 from keras.layers import Input, Conv2D, MaxPooling2D, UpSampling2D, concatenate
 from keras.models import Model, load_model
 from keras.preprocessing.image import ImageDataGenerator
+from keras.utils import image_dataset_from_directory
 
 import pandas as pd
 import matplotlib.pyplot as plt
+import numpy as np
+import cv2
 import os
 import argparse
 import glob
 import random
 
+def ms_ssim_loss(y_true, y_pred):
+    return 1 - tf.reduce_mean(tf.image.ssim_multiscale(y_true, y_pred, 1.0))
+
+
 def cnn_model():
 
     inputs = Input(shape=(600, 400, 3))
 
-    conv1 = Conv2D(filters=16, kernel_size=(3,3), padding='same', activation='relu')(inputs)
+    # conv1 = Conv2D(filters=16, kernel_size=(3,3), padding='same', activation='relu')(inputs)
+    # conv1 = Conv2D(filters=16, kernel_size=(3,3), padding='same', activation='relu')(conv1)
+    # pool1 = MaxPooling2D(pool_size=(2,2))(conv1)
+
+    # conv2 = Conv2D(filters=32, kernel_size=(3,3), padding='same', activation='relu')(pool1)
+    # conv2 = Conv2D(filters=32, kernel_size=(3,3), padding='same', activation='relu')(conv2)
+    # pool2 = MaxPooling2D(pool_size=(2,2))(conv2)
+
+    # conv3 = Conv2D(filters=64, kernel_size=(3,3), padding='same', activation='relu')(pool2)
+    # conv3 = Conv2D(filters=64, kernel_size=(3,3), padding='same', activation='relu')(conv3)
+    # pool3 = MaxPooling2D(pool_size=(2,2))(conv3)
+
+    # conv4 = Conv2D(filters=128, kernel_size=(3,3), padding='same', activation='relu')(pool3)
+    # conv4 = Conv2D(filters=128, kernel_size=(3,3), padding='same', activation='relu')(conv4)
+
+    # up1 = Conv2D(filters=64, kernel_size=(2,2), activation = 'relu', padding = 'same')(UpSampling2D()(conv4))
+    # merge1 = concatenate([conv3, up1], axis = 3)
+    # conv5 = Conv2D(filters=64, kernel_size=(3,3), padding='same', activation='relu')(merge1)
+    # conv5 = Conv2D(filters=64, kernel_size=(3,3), padding='same', activation='relu')(conv5)
+
+    # up2 = Conv2D(filters=32, kernel_size=(2,2), activation = 'relu', padding = 'same')(UpSampling2D()(conv5))
+    # merge2 = concatenate([conv2, up2], axis = 3)
+    # conv6 = Conv2D(filters=32, kernel_size=(3,3), padding='same', activation='relu')(merge2)
+    # conv6 = Conv2D(filters=32, kernel_size=(3,3), padding='same', activation='relu')(conv6)
+
+    # up3 = Conv2D(filters=16, kernel_size=(2,2), activation = 'relu', padding = 'same')(UpSampling2D()(conv6))
+    # merge3 = concatenate([conv1, up3], axis = 3)
+    # conv7 = Conv2D(filters=16, kernel_size=(3,3), padding='same', activation='relu')(merge3)
+    # conv7 = Conv2D(filters=16, kernel_size=(3,3), padding='same', activation='relu')(conv7)
+
+    
+    conv1 = Conv2D(filters=8, kernel_size=(3,3), padding='same', activation='relu')(inputs)
+    conv1 = Conv2D(filters=8, kernel_size=(3,3), padding='same', activation='relu')(conv1)
     pool1 = MaxPooling2D(pool_size=(2,2))(conv1)
 
-    conv2 = Conv2D(filters=32, kernel_size=(3,3), padding='same', activation='relu')(pool1)
+    conv2 = Conv2D(filters=16, kernel_size=(3,3), padding='same', activation='relu')(pool1)
+    conv2 = Conv2D(filters=16, kernel_size=(3,3), padding='same', activation='relu')(conv2)
     pool2 = MaxPooling2D(pool_size=(2,2))(conv2)
 
-    conv3 = Conv2D(filters=64, kernel_size=(3,3), padding='same', activation='relu')(pool2)
+    conv3 = Conv2D(filters=32, kernel_size=(3,3), padding='same', activation='relu')(pool2)
+    conv3 = Conv2D(filters=32, kernel_size=(3,3), padding='same', activation='relu')(conv3)
     pool3 = MaxPooling2D(pool_size=(2,2))(conv3)
 
-    conv4 = Conv2D(filters=128, kernel_size=(3,3), padding='same', activation='relu')(pool3)
+    conv4 = Conv2D(filters=64, kernel_size=(3,3), padding='same', activation='relu')(pool3)
+    conv4 = Conv2D(filters=64, kernel_size=(3,3), padding='same', activation='relu')(conv4)
 
-    up1 = Conv2D(filters=64, kernel_size=(2,2), activation = 'relu', padding = 'same')(UpSampling2D()(conv4))
+    up1 = Conv2D(filters=32, kernel_size=(2,2), activation = 'relu', padding = 'same')(UpSampling2D()(conv4))
     merge1 = concatenate([conv3, up1], axis = 3)
+    conv5 = Conv2D(filters=32, kernel_size=(3,3), padding='same', activation='relu')(merge1)
+    conv5 = Conv2D(filters=32, kernel_size=(3,3), padding='same', activation='relu')(conv5)
 
-    up2 = Conv2D(filters=32, kernel_size=(2,2), activation = 'relu', padding = 'same')(UpSampling2D()(merge1))
+    up2 = Conv2D(filters=16, kernel_size=(2,2), activation = 'relu', padding = 'same')(UpSampling2D()(conv5))
     merge2 = concatenate([conv2, up2], axis = 3)
+    conv6 = Conv2D(filters=16, kernel_size=(3,3), padding='same', activation='relu')(merge2)
+    conv6 = Conv2D(filters=16, kernel_size=(3,3), padding='same', activation='relu')(conv6)
 
-    up3 = Conv2D(filters=16, kernel_size=(2,2), activation = 'relu', padding = 'same')(UpSampling2D()(merge2))
+    up3 = Conv2D(filters=8, kernel_size=(2,2), activation = 'relu', padding = 'same')(UpSampling2D()(conv6))
     merge3 = concatenate([conv1, up3], axis = 3)
+    conv7 = Conv2D(filters=8, kernel_size=(3,3), padding='same', activation='relu')(merge3)
+    conv7 = Conv2D(filters=8, kernel_size=(3,3), padding='same', activation='relu')(conv7)
 
-    outputs = Conv2D(filters=3, kernel_size=(3,3), padding='same', activation='relu')(merge3)
+    outputs = Conv2D(filters=3, kernel_size=(3,3), padding='same', activation='relu')(conv7)
 
     model = Model(inputs=inputs, outputs=outputs)
     return model
@@ -49,11 +97,9 @@ def train(config):
 
     data_gen_args = dict(
         rescale= 1./255,  # Normalize pixel values
-        rotation_range=40,
+        rotation_range=20,
         width_shift_range=0.2,
         height_shift_range=0.2,
-        shear_range=0.2,
-        zoom_range=0.2,
         horizontal_flip=True,
         fill_mode= "nearest"
     )
@@ -83,9 +129,9 @@ def train(config):
     #Compile the model
     model = cnn_model()
     # print(model.summary())
-    model.compile(optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3),
-        loss=tf.keras.losses.MeanSquaredError(), 
-        metrics = ["accuracy"])
+    model.compile(optimizer = tf.keras.optimizers.Adam(learning_rate=1e-4),
+        loss = ms_ssim_loss, 
+        metrics = [ms_ssim_loss, "accuracy"])
 
     generator = zip(train_generator, test_generator)
 
@@ -96,50 +142,56 @@ def train(config):
         batch_size= config.train_batch_size
     )
 
-    # for e in range(model.epochs):
-    # print('Epoch: ', e)
-    # batches = 0
-    # for x_batch, y_batch in generator.flow(x_train, y_train, batch_size=32):
-    #     model.fit(x_batch, y_batch)
-    #     batches += 1
-    #     if batches >= len(x_train) / 32:
-    #         # we need to break the loop by hand because
-    #         # the generator loops indefinitely
-    #         break
-
     model.save(config.model_loc)
 
+    # TODO: Add preprocessing layer after complete building model
+
 def test(config):
-    model = load_model(config.model_loc)
+    model = load_model(config.model_loc, custom_objects={'ms_ssim_loss': ms_ssim_loss})
 
-    low_df = pd.DataFrame({'low': glob.glob(config.lowlight_test_images_path)})
-    normal_df = pd.DataFrame({ 'normal': glob.glob(config.result_test_images_path)})
+    low_ds = image_dataset_from_directory(
+        directory= config.lowlight_test_images_path,
+        labels=None,
+        label_mode=None,
+        batch_size=48,
+        image_size=(600, 400))
 
-    data_gen_args = dict(rescale= 1./255)
+    normal_ds = image_dataset_from_directory(
+        directory= config.result_test_images_path,
+        labels=None,
+        label_mode=None,
+        batch_size=48,
+        image_size=(600, 400))
 
-    train_datagen = ImageDataGenerator(**data_gen_args)
-    test_datagen = ImageDataGenerator(**data_gen_args)
-    seed = random.randint(1, 1000000)
+    low_ds = low_ds.map(lambda x: (tf.divide(x, 255.0)))
+    normal_ds = normal_ds.map(lambda x: (tf.divide(x, 255.0)))
 
-    train_generator = train_datagen.flow_from_dataframe(
-        low_df,
-        x_col = "low",
-        target_size = (600, 400),  # Resize images to a fixed size
-        batch_size = config.train_batch_size,
-        class_mode = None,
-        seed = seed
-    )
+    # for low, normal in zip(low_ds, normal_ds)
 
-    test_generator = test_datagen.flow_from_dataframe(
-        normal_df,
-        x_col="normal",
-        target_size=(600, 400),  # Resize images to a fixed size
-        batch_size=config.train_batch_size,
-        class_mode = None,
-        seed = seed
-    )
+    result = model.evaluate(zip(low_ds, normal_ds), batch_size = 48, verbose = 0)
+    print(model.metrics_names)
+    print(result)
 
-    print(config)
+def predict(config):
+    model = load_model(config.model_loc, custom_objects={'ms_ssim_loss': ms_ssim_loss})
+
+    for filename in os.listdir(config.predict_images_input_path):
+        image_bgr = cv2.imread(os.path.join(config.predict_images_input_path,filename))
+
+        if image_bgr is not None:
+            image_bgr = cv2.resize(image_bgr, (600,400), interpolation = cv2.INTER_AREA)  
+            image_rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
+            image_rgb = image_rgb / 255.0
+            image_rgb = np.array([image_rgb])
+            image_rgb = np.transpose(image_rgb,(0,2,1,3))
+            
+            result = model.predict(image_rgb)
+
+            result = np.transpose(result,(0,2,1,3))
+            result = result * 255.0
+            result = cv2.cvtColor(result[0], cv2.COLOR_RGB2BGR)
+
+            cv2.imwrite(os.path.join(config.predict_images_output_path, filename), result)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -147,8 +199,12 @@ if __name__ == '__main__':
     # Input Parameters
     parser.add_argument('--lowlight_train_images_path', type=str, default="./LOL/Real_captured/Train/Low/*.png")
     parser.add_argument('--result_train_images_path', type=str, default="./LOL/Real_captured/Train/Normal/*.png")
-    parser.add_argument('--lowlight_test_images_path', type=str, default="./LOL/Real_captured/Test/Low/*.png")
-    parser.add_argument('--result_test_images_path', type=str, default="./LOL/Real_captured/Test/Normal/*.png")
+
+    parser.add_argument('--lowlight_test_images_path', type=str, default="./LOL/Real_captured/Test/Low")
+    parser.add_argument('--result_test_images_path', type=str, default="./LOL/Real_captured/Test/Normal")
+
+    parser.add_argument('--predict_images_input_path', type=str, default="./Predict/Input/")
+    parser.add_argument('--predict_images_output_path', type=str, default="./Predict/Output/")
 
     parser.add_argument('--model_loc', type=str, default="./Model/")
 
@@ -159,7 +215,7 @@ if __name__ == '__main__':
     parser.add_argument('--test_batch_size', type=int, default=50)
 
     config = parser.parse_known_args()[0]
-    train(config)
+    predict(config)
 
 
 # parser.add_argument('--lr', type=float, default=0.0001)
