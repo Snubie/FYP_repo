@@ -16,7 +16,22 @@ import glob
 import random
 
 def ms_ssim_loss(y_true, y_pred):
-    return 1 - tf.reduce_mean(tf.image.ssim_multiscale(y_true, y_pred, 1.0))
+    # try to add small number to prevent loss function return nan, not work
+    # epsilon = 1e-7
+    # y_true = y_true + epsilon
+    # y_pred = y_pred + epsilon
+
+    y_true_r, y_true_g, y_true_b = tf.split(y_true, 3, axis=-1)
+    y_pred_r, y_pred_g, y_pred_b = tf.split(y_pred, 3, axis=-1)
+
+    ssim_r = tf.image.ssim_multiscale(y_true_r, y_pred_r, 1.0)
+    ssim_g = tf.image.ssim_multiscale(y_true_g, y_pred_g, 1.0)
+    ssim_b = tf.image.ssim_multiscale(y_true_b, y_pred_b, 1.0)
+
+    # Average the SSIM values for the color channels
+    ms_ssim = (ssim_r + ssim_g + ssim_b) / 3
+
+    return 1 - tf.reduce_mean(ms_ssim)
 
 
 def cnn_model():
@@ -91,10 +106,7 @@ def cnn_model():
 
 def train(config):
 
-    # training dataset 
-    train_df = pd.DataFrame({ "lowlight" : glob.glob(config.lowlight_train_images_path)})
-    test_df = pd.DataFrame({ "normal" : glob.glob(config.result_train_images_path)})
-
+    # training dataset config
     data_gen_args = dict(
         rescale= 1./255,  # Normalize pixel values
         rotation_range=20,
@@ -104,42 +116,67 @@ def train(config):
         fill_mode= "nearest"
     )
 
-    train_datagen = ImageDataGenerator(**data_gen_args)
-    test_datagen = ImageDataGenerator(**data_gen_args)
+    # create dataset generator
+    x_train_datagen = ImageDataGenerator(**data_gen_args)
+    x_test_datagen = ImageDataGenerator(**data_gen_args)
     
     seed = random.randint(1, 1000000)
-    train_generator = train_datagen.flow_from_dataframe(
-        train_df,
-        x_col = "lowlight",
+    x_train_generator = x_train_datagen.flow_from_directory(
+        config.lowlight_train_images_path,
         target_size = (600, 400),  # Resize images to a fixed size
         batch_size = config.train_batch_size,
         class_mode = None,
         seed = seed
     )
 
-    test_generator = test_datagen.flow_from_dataframe(
-        test_df,
-        x_col="normal",
+    x_test_generator = x_test_datagen.flow_from_directory(
+        config.result_train_images_path,
         target_size=(600, 400),  # Resize images to a fixed size
         batch_size=config.train_batch_size,
         class_mode = None,
         seed = seed
     )
 
-    #Compile the model
+    # validation dataset
+    y_train_datagen = ImageDataGenerator(rescale=1./255)
+    y_test_datagen = ImageDataGenerator(rescale=1./255)
+
+    y_train_generator = y_train_datagen.flow_from_directory(
+        config.lowlight_test_images_path,
+        target_size=(600, 400),  # Resize images to a fixed size
+        batch_size=config.test_batch_size,
+        class_mode = None,
+        seed = seed
+    )
+
+    y_test_generator = y_test_datagen.flow_from_directory(
+        config.result_test_images_path,
+        target_size=(600, 400),  # Resize images to a fixed size
+        batch_size=config.test_batch_size,
+        class_mode = None,
+        seed = seed
+    )
+
+    # Compile the model
     model = cnn_model()
     # print(model.summary())
     model.compile(optimizer = tf.keras.optimizers.Adam(learning_rate=1e-4),
         loss = ms_ssim_loss, 
-        metrics = [ms_ssim_loss, "accuracy"])
+        metrics = ["mae"]
+    )
 
-    generator = zip(train_generator, test_generator)
+    train_generator = zip(x_train_generator, x_test_generator)
+    validation_generator = zip(y_train_generator, y_test_generator)
 
     model.fit(
-        generator,
-        steps_per_epoch = (train_df.size / config.train_batch_size),
+        train_generator,
+        # validation_data = validation_generator,
+        steps_per_epoch = (x_train_generator.samples / config.train_batch_size),
         epochs = config.epochs,
-        batch_size= config.train_batch_size
+        batch_size= config.train_batch_size,
+        # validation_steps = (y_test_generator.samples / config.test_batch_size),
+        # validation_batch_size= config.test_batch_size,
+        verbose = 1
     )
 
     model.save(config.model_loc)
@@ -197,11 +234,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     # Input Parameters
-    parser.add_argument('--lowlight_train_images_path', type=str, default="./LOL/Real_captured/Train/Low/*.png")
-    parser.add_argument('--result_train_images_path', type=str, default="./LOL/Real_captured/Train/Normal/*.png")
+    parser.add_argument('--lowlight_train_images_path', type=str, default="./LOL/Real_captured/Train/Low/")
+    parser.add_argument('--result_train_images_path', type=str, default="./LOL/Real_captured/Train/Normal/")
 
-    parser.add_argument('--lowlight_test_images_path', type=str, default="./LOL/Real_captured/Test/Low")
-    parser.add_argument('--result_test_images_path', type=str, default="./LOL/Real_captured/Test/Normal")
+    parser.add_argument('--lowlight_test_images_path', type=str, default="./LOL/Real_captured/Test/Low/")
+    parser.add_argument('--result_test_images_path', type=str, default="./LOL/Real_captured/Test/Normal/")
 
     parser.add_argument('--predict_images_input_path', type=str, default="./Predict/Input/")
     parser.add_argument('--predict_images_output_path', type=str, default="./Predict/Output/")
@@ -210,12 +247,10 @@ if __name__ == '__main__':
 
     parser.add_argument('--epochs', type=int, default=50)
     parser.add_argument('--train_batch_size', type=int, default=32)
-
-    parser.add_argument('--total_test_size', type=int, default=1000)
-    parser.add_argument('--test_batch_size', type=int, default=50)
+    parser.add_argument('--test_batch_size', type=int, default=12)
 
     config = parser.parse_known_args()[0]
-    predict(config)
+    train(config)
 
 
 # parser.add_argument('--lr', type=float, default=0.0001)
